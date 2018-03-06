@@ -1,8 +1,8 @@
 "use strict";
-const builtInModules = require("./lib/builtInModules").default;
 const thirdPartyModules = require("./lib/thirdPartyModules").default;
 const importSortFunc = require("./lib/importSort").default;
 const jscodeshift = require("jscodeshift");
+const rootSection = require("./lib/root");
 
 function createImportStatement(moduleName, variableName, propName, kind) {
   let declaration;
@@ -127,8 +127,8 @@ function createOutputImports(newImports, kind) {
     return [];
   }
 
-  const nodeModules = {};
   const thirdPartyImports = {};
+  const rootImport = {}
   const firstPartyImports = {};
   const localImports = {};
 
@@ -136,22 +136,22 @@ function createOutputImports(newImports, kind) {
 
   Object.keys(newImports).forEach(key => {
     const baseKey = key.split("/")[0];
-    if (builtInModules.indexOf(baseKey) > -1) {
-      nodeModules[key] = newImports[key];
-    } else if (thirdPartyModules.indexOf(baseKey) > -1) {
+    if (thirdPartyModules.indexOf(baseKey) > -1) {
       thirdPartyImports[key] = newImports[key];
     } else if (key.startsWith(".")) {
       localImports[key] = newImports[key];
+    } else if(rootSection.check(key)) {
+      rootImport[key] = newImports[key];
     } else {
       firstPartyImports[key] = newImports[key];
     }
   });
 
-  const nodeKeys = Object.keys(nodeModules)
-    .sort(importSortFunc)
-    .reverse();
   const thirdKeys = Object.keys(thirdPartyImports)
     .sort(importSortFunc)
+    .reverse();
+  const rootKeys = Object.keys(rootImport)
+    .sort(rootSection.sort)
     .reverse();
   const firstKeys = Object.keys(firstPartyImports)
     .sort(importSortFunc)
@@ -183,8 +183,8 @@ function createOutputImports(newImports, kind) {
 
   pushImports(localKeys);
   pushImports(firstKeys);
+  pushImports(rootKeys);
   pushImports(thirdKeys);
-  pushImports(nodeKeys);
 
   return outputImports;
 }
