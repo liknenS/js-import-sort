@@ -40,7 +40,25 @@ function createImportStatement(moduleName, variableName, propName, kind) {
   return declaration;
 }
 
+const getSource = (key, path) => {
+  if (key.includes('..') && path.startsWith('src/redux-app/')) {
+    const pathArr = path.replace('src/', '').split('/')
+    pathArr.pop()
+    const keyArray = key.split('/')
+    while(keyArray[0] === '..') {
+      keyArray.shift()
+      pathArr.pop()
+    }
+    if (keyArray[0] === 'shared') {
+      keyArray.shift()
+    }
+    key = [...pathArr,...keyArray].join('/')
+  }
+  return key
+}
+
 module.exports = function(file, api) {
+  console.log(file.path)
   const j = api.jscodeshift;
   const root = j(file.source);
   const imports = root.find(j.ImportDeclaration);
@@ -56,7 +74,7 @@ module.exports = function(file, api) {
 
   imports.forEach(i => {
     const node = i.node;
-    const source = node.source.value;
+    const source = getSource(node.source.value, file.path);
     const kind = node.importKind || "value";
 
     if (!newImports[kind]) {
@@ -103,10 +121,10 @@ module.exports = function(file, api) {
 
   let outputImports = [];
   outputImports = outputImports.concat(
-    createOutputImports(newImports["type"], "type")
+    createOutputImports(newImports["type"], "type", file.path)
   );
   outputImports = outputImports.concat(
-    createOutputImports(newImports["value"], "value")
+    createOutputImports(newImports["value"], "value", file.path)
   );
 
   const comments = root.find(j.Program).get("body", 0).node.comments;
@@ -122,7 +140,7 @@ module.exports = function(file, api) {
   return source.replace(/\/\/\$\$BLANK_LINE/g, "");
 };
 
-function createOutputImports(newImports, kind) {
+function createOutputImports(newImports, kind, path) {
   if (!newImports) {
     return [];
   }
