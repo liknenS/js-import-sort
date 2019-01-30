@@ -41,20 +41,21 @@ function createImportStatement(moduleName, variableName, propName, kind) {
 }
 
 const getSource = (key, path) => {
+  let keyArray = key.split('/')
   if (key.includes('..') && path.startsWith('src/redux-app/')) {
     const pathArr = path.replace('src/', '').split('/')
     pathArr.pop()
-    const keyArray = key.split('/')
     while(keyArray[0] === '..') {
       keyArray.shift()
       pathArr.pop()
     }
-    if (keyArray[0] === 'shared') {
-      keyArray.shift()
-    }
-    key = [...pathArr,...keyArray].join('/')
+    keyArray = [...pathArr,...keyArray]
   }
-  return key
+  if (keyArray[0] === 'shared') {
+    keyArray.shift()
+  }
+
+  return keyArray.join('/')
 }
 
 module.exports = function(file, api) {
